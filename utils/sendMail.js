@@ -2,21 +2,21 @@ const nodemailer = require("nodemailer");
 
 async function sendMail(to, subject, text) {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: process.env.MAIL_HOST,
+    port: Number(process.env.MAIL_PORT),
+    secure: false,
     auth: {
       user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS, 
+      pass: process.env.MAIL_PASS,
     },
   });
 
-  const mailOptions = {
+  return transporter.sendMail({
     from: `"Auro Haze" <${process.env.MAIL_USER}>`,
     to,
     subject,
     text,
-  };
-
-  return transporter.sendMail(mailOptions);
+  });
 }
 
 module.exports = { sendMail };
