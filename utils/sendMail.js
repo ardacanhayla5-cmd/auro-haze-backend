@@ -1,7 +1,7 @@
 const nodemailer = require("nodemailer");
 
 async function sendMail(to, subject, text) {
-  console.log("Mail config:", process.env.MAIL_HOST, process.env.MAIL_USER); // TEST LOG
+  console.log("Mail config:", process.env.MAIL_HOST, process.env.MAIL_USER);
 
   const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST,
@@ -11,6 +11,10 @@ async function sendMail(to, subject, text) {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 10000, // 10sn
   });
 
   return transporter.sendMail({
@@ -22,5 +26,3 @@ async function sendMail(to, subject, text) {
 }
 
 module.exports = { sendMail };
-
-/*denemee*/
