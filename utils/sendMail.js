@@ -1,39 +1,25 @@
-const axios = require("axios");
+const nodemailer = require("nodemailer");
 
 async function sendMail(to, subject, text) {
-  try {
-    const response = await axios.post(
-      "https://api.brevo.com/v3/smtp/email",
-      {
-        sender: {
-          name: "Auro Haze",
-          email: process.env.MAIL_USER,
-        },
-        to: [{ email: to }],
-        subject,
-        textContent: text,
-      },
-      {
-        headers: {
-          "api-key": process.env.MAIL_API_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  const transporter = nodemailer.createTransport({
+    host: process.env.MAIL_HOST,
+    port: Number(process.env.MAIL_PORT),
+    secure: true, // 465 için true!
+    auth: {
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
 
-    console.log("MAIL BAŞARILI:", response.data);
-    return response.data;
-  } catch (err) {
-    console.error("MAIL HATA:", err.response?.data || err.message);
-    throw err;
-  }
+  return transporter.sendMail({
+    from: `"Auro Haze" <${process.env.MAIL_USER}>`,
+    to,
+    subject,
+    text,
+  });
 }
-
-await sendMail(
-  "aurohazee@gmail.com",
-  "Auro Haze Test Mail",
-  "Backend Brevo API ile mail gönderiyor! ✔️"
-);
-
 
 module.exports = { sendMail };
