@@ -1,28 +1,32 @@
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
 async function sendMail(to, subject, text) {
-  console.log("Mail config:", process.env.MAIL_HOST, process.env.MAIL_USER);
+  try {
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "Auro Haze",
+          email: process.env.MAIL_USER,
+        },
+        to: [{ email: to }],
+        subject,
+        textContent: text,
+      },
+      {
+        headers: {
+          "api-key": process.env.MAIL_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST,
-    port: Number(process.env.MAIL_PORT),
-    secure: false,
-    auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-    connectionTimeout: 10000, // 10sn
-  });
-
-  return transporter.sendMail({
-    from: `"Auro Haze" <${process.env.MAIL_USER}>`,
-    to,
-    subject,
-    text,
-  });
+    console.log("MAIL BAŞARILI:", response.data);
+    return response.data;
+  } catch (err) {
+    console.error("MAIL HATA:", err.response?.data || err.message);
+    throw err;
+  }
 }
 
 module.exports = { sendMail };
