@@ -14,13 +14,12 @@ const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const { sendMail } = require("./utils/sendMail");
 
-
 const app = express();
 
 /* ======================
    CONFIG
 ====================== */
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "auro_haze_secret";
 
 /* ======================
@@ -57,17 +56,16 @@ mongoose
    MODELS
 ====================== */
 const UserSchema = new mongoose.Schema({
-
   email: { type: String, unique: true },
   passwordHash: String,
-
   name: String,
   surname: String,
   phone: String,
   birthDate: String,
-
   favorites: [String],
 });
+const User = mongoose.model("User", UserSchema);
+
 /* ======================
    DROP ÜRÜN MODELLERİ
 ====================== */
@@ -84,31 +82,34 @@ const ProductDetailSchema = new mongoose.Schema({
 });
 const ProductDetail = mongoose.model("ProductDetail", ProductDetailSchema);
 
-const ReviewSchema = new mongoose.Schema({
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductDetail" },
-  name: String,
-  rating: Number,
-  comment: String,
-}, { timestamps: true });
+const ReviewSchema = new mongoose.Schema(
+  {
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductDetail" },
+    name: String,
+    rating: Number,
+    comment: String,
+  },
+  { timestamps: true }
+);
 const Review = mongoose.model("Review", ReviewSchema);
 
-const PreorderSchema = new mongoose.Schema({
-  productId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductDetail" },
-  frontendId: Number,
-  size: String,
-  quantity: Number,
-  status: { type: String, default: "pending" },
-}, { timestamps: true });
+const PreorderSchema = new mongoose.Schema(
+  {
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "ProductDetail" },
+    frontendId: Number,
+    size: String,
+    quantity: Number,
+    status: { type: String, default: "pending" },
+  },
+  { timestamps: true }
+);
 const Preorder = mongoose.model("Preorder", PreorderSchema);
-
-const User = mongoose.model("User", UserSchema);
 
 const ProductSchema = new mongoose.Schema({
   name: String,
   price: Number,
   img: String,
 });
-
 const Product = mongoose.model("Product", ProductSchema);
 
 /* ======================
@@ -124,8 +125,8 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
-
         let user = await User.findOne({ email });
+
         if (!user) {
           user = await User.create({
             email,
@@ -235,7 +236,6 @@ app.get("/api/user/me", auth, async (req, res) => {
   res.json(user);
 });
 
-// PROFİL GÜNCELLE
 app.put("/api/user/update", auth, async (req, res) => {
   const { name, surname, phone, birthDate } = req.body;
 
@@ -249,13 +249,9 @@ app.put("/api/user/update", auth, async (req, res) => {
   res.json({ success: true });
 });
 
-// ŞİFRE DEĞİŞTİR
 app.put("/api/user/change-password", auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const user = await User.findById(req.user.id);
-
-  if (user.passwordHash === "GOOGLE_AUTH")
-    return res.status(400).json({ error: "Google hesabında şifre yok" });
 
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok)
@@ -268,31 +264,23 @@ app.put("/api/user/change-password", auth, async (req, res) => {
 });
 
 /* ======================
-   PRODUCTS
+   PRODUCTS / DROP SYSTEM
 ====================== */
 app.get("/api/products", async (req, res) => {
   res.json(await Product.find());
 });
-/* ======================
-   ÜRÜN DETAY GETİR
-====================== */
+
 app.get("/api/product/:frontendId", async (req, res) => {
-  const frontendId = Number(req.params.frontendId);
-  const product = await ProductDetail.findOne({ frontendId }).lean();
+  const product = await ProductDetail.findOne({ frontendId: Number(req.params.frontendId) }).lean();
   if (!product) return res.status(404).json({ error: "Ürün bulunamadı" });
 
   const reviews = await Review.find({ productId: product._id })
     .sort({ createdAt: -1 })
     .lean();
 
-  res.json({
-    product,
-    reviews
-  });
+  res.json({ product, reviews });
 });
-/* ======================
-   YORUM EKLE
-====================== */
+
 app.post("/api/review", async (req, res) => {
   const { productId, name, rating, comment } = req.body;
   if (!productId || !name || !rating || !comment)
@@ -314,13 +302,12 @@ app.post("/api/review", async (req, res) => {
 
   res.json({ success: true });
 });
-/* ======================
-   ÖN SİPARİŞ OLUŞTUR
-====================== */
+
 app.post("/api/preorder", async (req, res) => {
   const { productId, frontendId, size, quantity } = req.body;
 
-  if (!productId || !size) return res.status(400).json({ error: "Ürün veya beden eksik" });
+  if (!productId || !size)
+    return res.status(400).json({ error: "Ürün veya beden eksik" });
 
   await Preorder.create({
     productId,
@@ -333,18 +320,21 @@ app.post("/api/preorder", async (req, res) => {
 });
 
 /* ======================
-   TEST
+   TEST ROUTES
 ====================== */
-app.get("/test", (req, res) => res.send("BACKEND OK"));
+app.get("/test", (req, res) => {
+  res.json({ message: "Backend OK!" });
+});
+
 app.get("/test-mail", async (req, res) => {
   try {
     await sendMail(
       "seninmailin@gmail.com",
       "Auro Haze Test Mail",
-      "Bu bir test mailidir. Backend mail gönderiyor ✅"
+      "Bu bir test mailidir. Backend mail gönderiyor! ✔"
     );
 
-    res.send("Mail gönderildi ✅");
+    res.send("Mail gönderildi ✔");
   } catch (err) {
     console.error("MAIL HATA:", err.message);
     res.status(500).send("Mail gönderilemedi ❌");
@@ -352,27 +342,8 @@ app.get("/test-mail", async (req, res) => {
 });
 
 /* ======================
-   START
+   START SERVER
 ====================== */
 app.listen(PORT, () =>
   console.log(`Server çalışıyor → http://localhost:${PORT}`)
 );
-app.post("/api/notifications/enable", auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-
-    await sendMail(
-      user.email,
-      "Auro Haze Bildirimleri Açıldı",
-      "Bildirimleriniz başarıyla açıldı. Sipariş ve kampanya bildirimleri alacaksınız."
-    );
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Mail gönderilemedi" });
-  }
-
-  
-});
-
