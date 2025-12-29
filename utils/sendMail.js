@@ -1,10 +1,12 @@
 const nodemailer = require("nodemailer");
 
 async function sendMail(to, subject, text) {
+  console.log("Mail config:", process.env.MAIL_HOST, process.env.MAIL_USER); // TEST LOG
+
   const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST,
-    port: process.env.MAIL_PORT,
-    secure: false, // 587 için hep false!
+    port: Number(process.env.MAIL_PORT),
+    secure: false,
     auth: {
       user: process.env.MAIL_USER,
       pass: process.env.MAIL_PASS,
@@ -20,3 +22,5 @@ async function sendMail(to, subject, text) {
 }
 
 module.exports = { sendMail };
+
+/*denemee*/
