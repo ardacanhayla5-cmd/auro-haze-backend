@@ -322,24 +322,21 @@ app.post("/api/preorder", async (req, res) => {
 /* ======================
    TEST ROUTES
 ====================== */
-app.get("/test", (req, res) => {
-  res.json({ message: "Backend OK!" });
-});
-
-app.get("/test-mail", async (req, res) => {
+app.get("/test", async (req, res) => {
   try {
     await sendMail(
       "seninmailin@gmail.com",
       "Auro Haze Test Mail",
-      "Bu bir test mailidir. Backend mail gönderiyor! ✔"
+      "Bu bir test mailidir. Backend mail gönderiyor ✅"
     );
 
-    res.send("Mail gönderildi ✔");
+    res.json({ message: "Backend OK ve Mail Gönderildi!" });
   } catch (err) {
     console.error("MAIL HATA:", err.message);
-    res.status(500).send("Mail gönderilemedi ❌");
+    res.status(500).json({ error: "Mail gönderilemedi" });
   }
 });
+
 
 /* ======================
    START SERVER
