@@ -29,4 +29,11 @@ async function sendMail(to, subject, text) {
   }
 }
 
+await sendMail(
+  "aurohazee@gmail.com",
+  "Auro Haze Test Mail",
+  "Backend Brevo API ile mail gönderiyor! ✔️"
+);
+
+
 module.exports = { sendMail };
