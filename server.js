@@ -120,12 +120,15 @@ const Preorder = mongoose.model("Preorder", PreorderSchema);
 /* ======================
    PASSPORT GOOGLE
 ====================== */
-//passport.use(
-  //new GoogleStrategy(
+/* ======================
+   PASSPORT GOOGLE
+====================== */
+passport.use(
+  new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -147,6 +150,7 @@ const Preorder = mongoose.model("Preorder", PreorderSchema);
     }
   )
 );
+
 
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
