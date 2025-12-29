@@ -131,16 +131,17 @@ app.get("/", (_req, res) => {
 app.get("/test", async (req, res) => {
   try {
     await sendMail(
-      process.env.MAIL_USER,
-      "Auro Haze Test Mail",
-      "Backend mail gönderiyor!"
+      "info@aurohaze.com",
+      "Auro Haze Test",
+      "Bu test mailidir"
     );
-    res.json({ message: "Mail gönderildi!" });
+    res.json({ message: "Başarılı" });
   } catch (err) {
     console.error("MAIL HATA:", err.message);
-    res.status(500).json({ error: "Mail gönderilemedi" });
+    res.status(500).json({ error: "Mail gönderilemedi", detail: err.message });
   }
 });
+
 
 /* ======================
    START
