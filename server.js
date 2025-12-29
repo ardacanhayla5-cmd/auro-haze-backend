@@ -41,6 +41,7 @@ app.use(passport.session());
 
 /* ======================
    STATIC FILES
+   (frontend klasörün varsa)
 ====================== */
 app.use(express.static(path.join(__dirname, "../frontend")));
 
@@ -58,13 +59,24 @@ mongoose
 const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   passwordHash: String,
+
   name: String,
   surname: String,
   phone: String,
   birthDate: String,
+
   favorites: [String],
 });
+
 const User = mongoose.model("User", UserSchema);
+
+const ProductSchema = new mongoose.Schema({
+  name: String,
+  price: Number,
+  img: String,
+});
+
+const Product = mongoose.model("Product", ProductSchema);
 
 /* ======================
    DROP ÜRÜN MODELLERİ
@@ -105,13 +117,6 @@ const PreorderSchema = new mongoose.Schema(
 );
 const Preorder = mongoose.model("Preorder", PreorderSchema);
 
-const ProductSchema = new mongoose.Schema({
-  name: String,
-  price: Number,
-  img: String,
-});
-const Product = mongoose.model("Product", ProductSchema);
-
 /* ======================
    PASSPORT GOOGLE
 ====================== */
@@ -125,8 +130,8 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
-        let user = await User.findOne({ email });
 
+        let user = await User.findOne({ email });
         if (!user) {
           user = await User.create({
             email,
@@ -209,7 +214,8 @@ app.post("/api/auth/login", async (req, res) => {
 /* ======================
    GOOGLE AUTH
 ====================== */
-app.get("/auth/google",
+app.get(
+  "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
@@ -236,6 +242,7 @@ app.get("/api/user/me", auth, async (req, res) => {
   res.json(user);
 });
 
+// PROFİL GÜNCELLE
 app.put("/api/user/update", auth, async (req, res) => {
   const { name, surname, phone, birthDate } = req.body;
 
@@ -249,9 +256,13 @@ app.put("/api/user/update", auth, async (req, res) => {
   res.json({ success: true });
 });
 
+// ŞİFRE DEĞİŞTİR
 app.put("/api/user/change-password", auth, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const user = await User.findById(req.user.id);
+
+  if (user.passwordHash === "GOOGLE_AUTH")
+    return res.status(400).json({ error: "Google hesabında şifre yok" });
 
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok)
@@ -264,23 +275,33 @@ app.put("/api/user/change-password", auth, async (req, res) => {
 });
 
 /* ======================
-   PRODUCTS / DROP SYSTEM
+   PRODUCTS
 ====================== */
 app.get("/api/products", async (req, res) => {
   res.json(await Product.find());
 });
 
+/* ======================
+   ÜRÜN DETAY GETİR
+====================== */
 app.get("/api/product/:frontendId", async (req, res) => {
-  const product = await ProductDetail.findOne({ frontendId: Number(req.params.frontendId) }).lean();
+  const frontendId = Number(req.params.frontendId);
+  const product = await ProductDetail.findOne({ frontendId }).lean();
   if (!product) return res.status(404).json({ error: "Ürün bulunamadı" });
 
   const reviews = await Review.find({ productId: product._id })
     .sort({ createdAt: -1 })
     .lean();
 
-  res.json({ product, reviews });
+  res.json({
+    product,
+    reviews,
+  });
 });
 
+/* ======================
+   YORUM EKLE
+====================== */
 app.post("/api/review", async (req, res) => {
   const { productId, name, rating, comment } = req.body;
   if (!productId || !name || !rating || !comment)
@@ -290,19 +311,22 @@ app.post("/api/review", async (req, res) => {
 
   const stats = await Review.aggregate([
     { $match: { productId: new mongoose.Types.ObjectId(productId) } },
-    { $group: { _id: "$productId", avg: { $avg: "$rating" }, count: { $sum: 1 } } }
+    { $group: { _id: "$productId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
   ]);
 
   if (stats.length > 0) {
     await ProductDetail.findByIdAndUpdate(productId, {
       ratingAvg: stats[0].avg,
-      ratingCount: stats[0].count
+      ratingCount: stats[0].count,
     });
   }
 
   res.json({ success: true });
 });
 
+/* ======================
+   ÖN SİPARİŞ OLUŞTUR
+====================== */
 app.post("/api/preorder", async (req, res) => {
   const { productId, frontendId, size, quantity } = req.body;
 
@@ -320,12 +344,12 @@ app.post("/api/preorder", async (req, res) => {
 });
 
 /* ======================
-   TEST ROUTES
+   TEST ENDPOINT (MAIL + STATUS)
 ====================== */
 app.get("/test", async (req, res) => {
   try {
     await sendMail(
-      "seninmailin@gmail.com",
+      "seninmailin@gmail.com", // burayı kendi mailinle değiştir
       "Auro Haze Test Mail",
       "Bu bir test mailidir. Backend mail gönderiyor ✅"
     );
@@ -337,9 +361,28 @@ app.get("/test", async (req, res) => {
   }
 });
 
+/* ======================
+   BİLDİRİM MAIL ENDPOINT
+====================== */
+app.post("/api/notifications/enable", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    await sendMail(
+      user.email,
+      "Auro Haze Bildirimleri Açıldı",
+      "Bildirimleriniz başarıyla açıldı. Sipariş ve kampanya bildirimleri alacaksınız."
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Mail gönderilemedi" });
+  }
+});
 
 /* ======================
-   START SERVER
+   START
 ====================== */
 app.listen(PORT, () =>
   console.log(`Server çalışıyor → http://localhost:${PORT}`)
